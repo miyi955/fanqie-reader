@@ -201,3 +201,15 @@ fanqie-reader/
 ## 免责声明
 
 仅供个人阅读学习使用。请勿用于商业用途、批量分发或任何侵犯著作权的场景。
+
+## 开发
+
+```bash
+npm install          # 装依赖（sharp 有原生模块）
+node run-all.mjs     # 跑全部测试；需要本机有 Edge
+node fanqie.mjs app  # 前台起服务，方便看日志
+```
+
+仓库只含源码。`books/`、`covers/`、`.cache/`、`screenshots/`、`书架.html` 都在 `.gitignore` 里——这些是运行时产物，里面是书籍正文和个人书单，不该进版本库。
+
+`开始.bat` / `追更.bat` 通过 `.gitattributes` 固定为 CRLF。Windows 的 cmd 遇到 LF 换行的批处理会直接报错，这条不能省。
