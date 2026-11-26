@@ -40,11 +40,20 @@ for (let i = 0; i < 30; i++) {
 if (!ok) { console.log('SERVER_FAILED_TO_START'); srv.kill(); process.exit(1); }
 console.log('service ready on ' + PORT + '\n');
 
+// 先按当前缓存重新生成书架页，避免测试读到过期的 书架.html
+const gen = await runTest('fanqie.mjs', ['shelf']);
+if (!gen.out.includes('书架已生成')) {
+  console.log('SHELF_REGEN_FAILED\n' + gen.out);
+  srv.kill();
+  process.exit(1);
+}
+
 const suite = [
   ['server-smoke.mjs', [BASE], '服务端接口', 'ALL_PASS'],
   ['logic-test.mjs', [], '追更规则', 'ALL_PASS'],
   ['trash-test.mjs', [], '删除保护', 'ALL_PASS'],
   ['shelf-smoke.mjs', [], '书架页', 'ALL_PASS'],
+  ['reader-test.mjs', [], '阅读器功能', 'ALL_PASS'],
   // 功能完整性守卫放最后：先确认行为正确，再确认功能没被删
   ['baseline-guard.mjs', [], '功能完整性', 'BASELINE_INTACT'],
 ];

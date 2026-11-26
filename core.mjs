@@ -527,6 +527,27 @@ export async function buildReaderFile(store) {
   return file;
 }
 
+/* ================= 重建阅读器 =================
+ * 阅读器是"模板 + 数据"一次性烤进单文件 HTML 的，改了 template/reader.html 之后
+ * 已有的 books/*.html 不会自动跟着变。这个函数按当前模板重新生成，不动章节缓存。
+ */
+export async function rebuildReaders({ only = null } = {}) {
+  const books = scanBooks().filter(b => b.downloaded > 0);
+  const out = [];
+  for (const b of books) {
+    if (only && b.bookId !== only) continue;
+    const store = loadStore(b.bookId);
+    if (!store) continue;
+    try {
+      const file = await buildReaderFile(store);
+      out.push({ bookId: b.bookId, title: b.title, file });
+    } catch (e) {
+      out.push({ bookId: b.bookId, title: b.title, error: e.message });
+    }
+  }
+  return out;
+}
+
 /* ================= TXT ================= */
 export async function exportTxt(bookId) {
   const store = loadStore(bookId);

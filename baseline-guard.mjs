@@ -117,6 +117,22 @@ check('阅读器进度记忆', /localStorage/.test(reader));
 check('阅读器字号调节', /fontSize|font-size/i.test(reader));
 check('阅读器键盘翻章', /ArrowLeft/.test(reader) && /ArrowRight/.test(reader));
 
+// v2.1.0 新增
+check('阅读器返回书架按钮', /id="btnBack"/.test(reader));
+check('返回逻辑兼容直接访问（无 referrer 兜底跳首页）',
+  /function backToShelf/.test(reader) && /document\.referrer/.test(reader) && /location\.href\s*=\s*'\/'/.test(reader),
+  '应用窗口无地址栏，缺这个用户进阅读器就出不来');
+check('Esc 键返回书架', /case 'Escape'/.test(reader) && /backToShelf\(\)/.test(reader));
+check('阅读器行间距可调', /id="btnLh"/.test(reader) && /id="lhPop"/.test(reader) && /--lh/.test(reader));
+check('行间距多档可选', /data-lh=/.test(reader));
+check('行间距持久化', /state\.lh/.test(reader) && /JSON\.stringify\(state\)/.test(reader));
+check('目录可倒序', /id="btnOrder"/.test(reader) && /function setOrder/.test(reader));
+check('倒序按 dataset.i 匹配而非 DOM 顺序',
+  /Number\(links\[k\]\.dataset\.i\)/.test(reader),
+  '按 DOM 下标匹配会让倒序下高亮和点击错位');
+check('目录顺序持久化', /state\.order/.test(reader));
+check('阅读器模板改动可批量重建', /export async function rebuildReaders/.test(core) && /case 'rebuild'/.test(cli));
+
 /* ---------- 12. 技术约束 ---------- */
 check('只监听 127.0.0.1', /listen\([^)]*'127\.0\.0\.1'/.test(server));
 check('设备池轮换存在', /class DevicePool|createPool/.test(core));

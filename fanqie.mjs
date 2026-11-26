@@ -32,6 +32,7 @@ import {
   scanBooks, downloadBook, updateAll, updateOne,
   setAutoUpdate, removeBook, exportTxt, searchBooks, createPool,
   loadStore, fromInput, fetchCatalog, fmtWords, bookCachePath,
+  rebuildReaders,
 } from './core.mjs';
 import { buildShelf } from './shelf.mjs';
 
@@ -267,6 +268,21 @@ function doApp() {
   p.on('exit', c => process.exit(c ?? 0));
 }
 
+/* ================= 重建阅读器 =================
+ * 改了 template/reader.html 之后，已下载的书需要重新烤一遍才会生效。
+ */
+async function doRebuild(onlyRaw) {
+  const only = onlyRaw ? fromInput(onlyRaw) : null;
+  const rows = await rebuildReaders({ only });
+  if (!rows.length) { log(`${C.y}没有可重建的书${C.r}`); return; }
+  let okCount = 0, badCount = 0;
+  for (const r of rows) {
+    if (r.error) { log(`${C.y}✘${C.r} ${r.title}  ${C.d}${r.error}${C.r}`); badCount++; }
+    else { log(`${C.g}✔${C.r} ${r.title}`); okCount++; }
+  }
+  log(`\n重建 ${okCount} 本${badCount ? `，失败 ${badCount} 本` : ''}`);
+}
+
 /* ================= 入口 ================= */
 (async () => {
   try {
@@ -281,6 +297,7 @@ function doApp() {
       case 'update': case 'up': await doUpdate(args[0]); break;
       case 'auto':   doAuto(args[0], args[1]); break;
       case 'rm': case 'remove': await doRm(args[0]); break;
+      case 'rebuild': await doRebuild(args[0]); break;
       default:
         log(`
 ${C.b}番茄小说 · 个人书架${C.r}
@@ -295,6 +312,7 @@ ${C.b}番茄小说 · 个人书架${C.r}
   ${C.c}node fanqie.mjs auto <id|链接> on|off${C.r}  开关自动追更
   ${C.c}node fanqie.mjs rm   <id|链接>${C.r}         移出书架
   ${C.c}node fanqie.mjs txt  <id|链接>${C.r}         导出 TXT
+  ${C.c}node fanqie.mjs rebuild${C.r}                按当前模板重建所有阅读器
   ${C.c}node fanqie.mjs shelf${C.r}                  刷新书架页面
 
 ${C.d}选项

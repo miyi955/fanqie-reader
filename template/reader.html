@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__TITLE__</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c0392b'/%3E%3Cpath d='M9 9h14v3H9zm0 6h14v3H9zm0 6h9v3H9z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
   :root{
     --bg:#faf8f5; --fg:#2b2724; --sub:#8a827a; --line:#e6e0d8;
@@ -45,6 +46,29 @@
   button:hover{background:var(--sel)}
   button.icon{padding:5px 9px;line-height:1}
   button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* 返回书架：应用窗口没有地址栏和后退键，必须有个显式入口 */
+  #btnBack{font-size:15px;padding:4px 11px}
+
+  /* 行间距选择弹层 */
+  .lh-pop{
+    position:fixed;top:58px;right:16px;z-index:45;display:none;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 8px 28px rgba(0,0,0,.14);padding:10px 12px;
+    gap:6px;align-items:center;flex-wrap:wrap;max-width:min(420px,92vw);
+  }
+  .lh-pop.show{display:flex}
+  .lh-pop > span{font-size:12px;color:var(--sub);margin-right:2px}
+  .lh-pop button{padding:4px 10px;font-size:12.5px}
+  .lh-pop button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* 目录排序切换 */
+  .side-meta{align-items:center}
+  .side-meta .grp{display:flex;align-items:center;gap:8px}
+  #btnOrder{
+    padding:2px 8px;font-size:11px;border-radius:6px;color:var(--sub);
+  }
+  #btnOrder:hover{color:var(--fg)}
 
   /* ---------- 侧栏 ---------- */
   aside{
@@ -108,15 +132,26 @@
 <body>
 
 <header>
+  <button class="icon" id="btnBack" title="返回书架 (Esc)">←</button>
   <button class="icon" id="btnMenu" title="目录 (T)">☰</button>
   <div class="hd-title" id="hdTitle">__TITLE__<small id="hdAuthor">__AUTHOR__</small></div>
   <div class="tools">
     <button class="icon" id="btnFont" title="字体">Aa</button>
     <button class="icon" id="btnDec" title="缩小字号">−</button>
     <button class="icon" id="btnInc" title="放大字号">+</button>
+    <button class="icon" id="btnLh" title="行间距">≡</button>
     <button class="icon" id="btnTheme" title="主题">◐</button>
   </div>
 </header>
+
+<div class="lh-pop" id="lhPop">
+  <span>行间距</span>
+  <button data-lh="1.6">紧凑</button>
+  <button data-lh="1.8">较紧</button>
+  <button data-lh="1.95">标准</button>
+  <button data-lh="2.2">较松</button>
+  <button data-lh="2.6">宽松</button>
+</div>
 
 <aside id="side">
   <div class="side-top">
@@ -124,7 +159,10 @@
   </div>
   <div class="side-meta">
     <span id="metaCount"></span>
-    <span id="metaProg"></span>
+    <span class="grp">
+      <span id="metaProg"></span>
+      <button id="btnOrder" title="切换目录顺序">正序 ↑</button>
+    </span>
   </div>
   <nav id="nav"></nav>
 </aside>
@@ -152,18 +190,26 @@ const $ = s => document.querySelector(s);
 const nav = $('#nav'), main = $('#main'), body = $('#body');
 const KEY = 'fanqie-reader:' + BOOK.id;
 
-let state = { i:0, fs:19, theme:'light', font:'serif', side:true, scrolls:{} };
+let state = { i:0, fs:19, lh:1.95, theme:'light', font:'serif', side:true, order:'asc', scrolls:{} };
 try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch(e){}
 if (state.i >= BOOK.chapters.length) state.i = 0;
+if (state.order !== 'desc') state.order = 'asc';
+if (!(state.lh >= 1.2 && state.lh <= 3)) state.lh = 1.95;
 
-/* ---------- 主题 / 字号 ---------- */
+/* ---------- 主题 / 字号 / 行间距 ---------- */
 function applyUI(){
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.dataset.font = state.font;
   document.documentElement.style.setProperty('--fs', state.fs + 'px');
+  document.documentElement.style.setProperty('--lh', String(state.lh));
   $('#btnFont').classList.toggle('on', state.font === 'sans');
   if (state.side) { $('#side').classList.remove('hide'); main.classList.remove('full'); }
   else { $('#side').classList.add('hide'); main.classList.add('full'); }
+  // 行间距弹层里的选中态
+  document.querySelectorAll('#lhPop button[data-lh]').forEach(b => {
+    b.classList.toggle('on', Math.abs(Number(b.dataset.lh) - state.lh) < 0.01);
+  });
+  $('#btnOrder').textContent = state.order === 'asc' ? '正序 ↑' : '倒序 ↓';
 }
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
@@ -174,32 +220,55 @@ function toast(msg){
 }
 
 /* ---------- 目录 ---------- */
+// 倒序时只改渲染顺序，dataset.i 始终保存原章节下标。
+// 这样 go()/markNav() 不需要知道当前是正序还是倒序，避免"倒序下点错章"这类错位。
 function buildNav(){
+  const n = BOOK.chapters.length;
+  const idxs = [];
+  for (let i = 0; i < n; i++) idxs.push(i);
+  if (state.order === 'desc') idxs.reverse();
+
   const frag = document.createDocumentFragment();
-  BOOK.chapters.forEach((ch, i) => {
+  for (const i of idxs){
+    const ch = BOOK.chapters[i];
     const a = document.createElement('a');
     a.href = 'javascript:void 0';
     a.dataset.i = i;
     a.textContent = ch.t || ('第 ' + (i+1) + ' 章');
     a.onclick = e => { e.preventDefault(); go(i); };
     frag.appendChild(a);
-  });
+  }
   nav.innerHTML = '';
   nav.appendChild(frag);
-  $('#metaCount').textContent = '共 ' + BOOK.chapters.length + ' 章 · ' + (BOOK.words||0).toLocaleString() + ' 字';
+  $('#metaCount').textContent = '共 ' + n + ' 章 · ' + (BOOK.words||0).toLocaleString() + ' 字';
 }
 
 function markNav(){
+  // 按 dataset.i 匹配，不依赖 DOM 顺序（倒序时顺序与章节号相反）
   const links = nav.children;
+  let curLink = null;
   for (let k = 0; k < links.length; k++){
-    links[k].classList.toggle('read', k < state.i);
-    links[k].classList.toggle('cur', k === state.i);
+    const idx = Number(links[k].dataset.i);
+    links[k].classList.toggle('read', idx < state.i);
+    const isCur = idx === state.i;
+    links[k].classList.toggle('cur', isCur);
+    if (isCur) curLink = links[k];
   }
-  const cur = links[state.i];
   // jsdom 等环境不实现 scrollIntoView，需保护
-  if (cur && state.side && !nav.dataset.filter && typeof cur.scrollIntoView === 'function'){
-    cur.scrollIntoView({ block: 'center' });
+  if (curLink && state.side && !nav.dataset.filter && typeof curLink.scrollIntoView === 'function'){
+    curLink.scrollIntoView({ block: 'center' });
   }
+}
+
+/** 切换目录正序/倒序。当前阅读章节保持不变，并把它滚到可见位置。 */
+function setOrder(order){
+  state.order = order === 'desc' ? 'desc' : 'asc';
+  save();
+  if (nav.dataset.filter) { $('#q').value = ''; nav.dataset.filter = ''; }
+  buildNav();
+  applyUI();          // 更新按钮文案
+  markNav();          // 重建后重新标记当前章并滚动到它
+  toast(state.order === 'asc' ? '目录：正序' : '目录：倒序');
 }
 
 /* ---------- 渲染 ---------- */
@@ -242,7 +311,40 @@ function go(i){
 /* ---------- 事件 ---------- */
 $('#btnPrev').onclick = () => go(state.i - 1);
 $('#btnNext').onclick = () => go(state.i + 1);
+
+/** 返回书架。
+ *  优先走 history.back()：从书架点进来时能原样回到原来的滚动位置和筛选状态。
+ *  但直接访问 /reader/<id>（或在新标签打开）时 history 里没有书架，back() 会退出应用，
+ *  所以先判断来源。referrer 为空说明不是从书架点进来的，直接跳首页。 */
+function backToShelf(){
+  const fromShelf = document.referrer && document.referrer.indexOf(location.origin) === 0;
+  if (fromShelf && history.length > 1) history.back();
+  else location.href = '/';
+}
+$('#btnBack').onclick = backToShelf;
+
 $('#btnMenu').onclick = () => { state.side = !state.side; applyUI(); save(); };
+$('#btnOrder').onclick = () => setOrder(state.order === 'asc' ? 'desc' : 'asc');
+
+/* 行间距 */
+const lhPop = $('#lhPop');
+$('#btnLh').onclick = e => { e.stopPropagation(); lhPop.classList.toggle('show'); };
+lhPop.onclick = e => {
+  const b = e.target.closest('button[data-lh]');
+  if (!b) return;
+  e.stopPropagation();
+  state.lh = Number(b.dataset.lh);
+  applyUI(); save();
+  const name = { '1.6':'紧凑','1.8':'较紧','1.95':'标准','2.2':'较松','2.6':'宽松' }[b.dataset.lh] || '';
+  toast('行间距 ' + name);
+  lhPop.classList.remove('show');
+};
+// 点空白处关闭弹层
+document.addEventListener('click', e => {
+  if (lhPop.classList.contains('show') && !lhPop.contains(e.target) && e.target.id !== 'btnLh'){
+    lhPop.classList.remove('show');
+  }
+});
 
 $('#btnInc').onclick = () => { state.fs = Math.min(34, state.fs + 1); applyUI(); save(); toast('字号 ' + state.fs); };
 $('#btnDec').onclick = () => { state.fs = Math.max(13, state.fs - 1); applyUI(); save(); toast('字号 ' + state.fs); };
@@ -276,6 +378,11 @@ document.addEventListener('keydown', e => {
     case 'k': go(state.i - 1); break;
     case 't': case 'T': state.side = !state.side; applyUI(); save(); break;
     case '/': e.preventDefault(); $('#q').focus(); break;
+    case 'Escape':
+      // Esc 依次收起：行间距弹层 → 返回书架
+      if (lhPop.classList.contains('show')) lhPop.classList.remove('show');
+      else backToShelf();
+      break;
   }
 });
 
@@ -289,7 +396,7 @@ main.addEventListener('scroll', () => {
 applyUI();
 buildNav();
 render();
-toast('← → 翻章　T 目录　/ 搜索章节');
+toast('← → 翻章　T 目录　Esc 返回书架');
 </script>
 </body>
 </html>
