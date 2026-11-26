@@ -41,19 +41,21 @@ if (!ok) { console.log('SERVER_FAILED_TO_START'); srv.kill(); process.exit(1); }
 console.log('service ready on ' + PORT + '\n');
 
 const suite = [
-  ['server-smoke.mjs', [BASE], '服务端接口'],
-  ['logic-test.mjs', [], '追更规则'],
-  ['trash-test.mjs', [], '删除保护'],
-  ['shelf-smoke.mjs', [], '书架页'],
+  ['server-smoke.mjs', [BASE], '服务端接口', 'ALL_PASS'],
+  ['logic-test.mjs', [], '追更规则', 'ALL_PASS'],
+  ['trash-test.mjs', [], '删除保护', 'ALL_PASS'],
+  ['shelf-smoke.mjs', [], '书架页', 'ALL_PASS'],
+  // 功能完整性守卫放最后：先确认行为正确，再确认功能没被删
+  ['baseline-guard.mjs', [], '功能完整性', 'BASELINE_INTACT'],
 ];
 
 let failed = 0;
-for (const [file, args, label] of suite) {
+for (const [file, args, label, token] of suite) {
   const r = await runTest(file, args);
   const tail = r.out.trim().split('\n').slice(-4).join('\n');
   console.log(`=== ${label} (${file}) exit=${r.code} ===`);
   console.log(tail);
-  if (!r.out.includes('ALL_PASS')) failed++;
+  if (!r.out.includes(token)) failed++;
   console.log('');
 }
 

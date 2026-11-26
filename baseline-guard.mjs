@@ -1,0 +1,141 @@
+// 功能完整性守卫：对照 BASELINE.md 检查关键能力是否还在。
+//
+// 这不是业务测试（那是各 *-test.mjs 的事），而是防"删功能"的静态+动态检查。
+// 重点盯：接口路由、CLI 命令、核心语义函数、数据字段、危险实现（unlink 复辟）。
+//
+// 用法：node baseline-guard.mjs
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const read = f => readFileSync(join(HERE, f), 'utf8');
+
+let pass = 0, fail = 0;
+const results = [];
+const check = (name, cond, hint = '') => {
+  if (cond) { pass++; results.push(['ok', name]); }
+  else { fail++; results.push(['fail', name, hint]); }
+};
+
+const server = read('server.mjs');
+const core = read('core.mjs');
+const cli = read('fanqie.mjs');
+const app = read('template/app.html');
+const reader = read('template/reader.html');
+
+/* ---------- 1. 服务端路由完整性 ---------- */
+const routes = [
+  ['GET', '/api/shelf'], ['GET', '/api/search'], ['GET', '/api/book'],
+  ['GET', '/api/ping'], ['GET', '/api/open-dir'],
+  ['POST', '/api/add'], ['POST', '/api/update'], ['POST', '/api/toggle'],
+  ['POST', '/api/remove'], ['POST', '/api/txt'], ['POST', '/api/abort'],
+];
+for (const [m, p] of routes) {
+  check(`路由 ${m} ${p}`, server.includes(`'${p}'`));
+}
+check('SSE 路由 /api/events', server.includes("'/api/events'"));
+check('阅读器路由 /reader/', server.includes("p.startsWith('/reader/')"));
+check('封面路由 /cover/', server.includes("p.startsWith('/cover/')"));
+
+/* ---------- 2. CLI 命令完整性 ---------- */
+const cmds = ['app', 'shelf', 'list', 'search', 'info', 'add', 'txt', 'update', 'auto', 'rm'];
+for (const c of cmds) {
+  check(`CLI 命令 ${c}`, new RegExp(`case '${c}'`).test(cli));
+}
+
+/* ---------- 3. core 导出完整性 ---------- */
+const exportsNeeded = [
+  'scanBooks', 'needsUpdate', 'setAutoUpdate', 'removeBook', 'downloadBook',
+  'updateOne', 'updateAll', 'buildReaderFile', 'exportTxt', 'fromInput',
+  'searchBooks', 'ensureCover', 'createPool', 'isDeviceBlocked',
+  'loadStore', 'saveStore', 'fmtWords', 'safeName',
+];
+for (const e of exportsNeeded) {
+  check(`core 导出 ${e}`, new RegExp(`export (async function|function|const) ${e}\\b`).test(core));
+}
+
+/* ---------- 4. 追更核心语义（最易回归） ---------- */
+check('needsUpdate 包含「缺章仍要补」的判断',
+  /downloaded\s*<\s*(?:b\.)?chapters/.test(core),
+  '若改回 !finished 会导致完结书缺口永远补不上');
+check('needsUpdate 尊重用户开关',
+  /autoUpdate\s*!==\s*false/.test(core));
+check('updateAll 先判开关再判完结',
+  core.indexOf('autoUpdate === false') > -1 &&
+  core.indexOf('autoUpdate === false') < core.indexOf('b.finished && b.downloaded >= b.chapters'),
+  '顺序错了会让关闭开关的书仍被抓');
+
+/* ---------- 5. 数据安全：不得复用物理删除 ---------- */
+check('removeBook 走回收目录而非 unlink',
+  /\.trash/.test(core) && /rename\(/.test(core),
+  '早期 unlink 直接删，误删过两本书');
+const removeBookBody = core.slice(core.indexOf('export async function removeBook'));
+const removeFn = removeBookBody.slice(0, removeBookBody.indexOf('\n}\n') + 3);
+check('removeBook 函数体内无 unlink', !/unlink\(/.test(removeFn));
+
+/* ---------- 6. 单实例探活必须校验标识 ---------- */
+check('ping 返回 app 标识', /app:\s*APP_ID/.test(server) || /app:\s*'fanqie-reader'/.test(server));
+check('probe() 校验 app 标识', /d\.app === APP_ID/.test(server) || /app === 'fanqie-reader'/.test(server));
+check('instance.json 写入 app 字段', /app:\s*APP_ID/.test(server));
+
+/* ---------- 7. 自脱离启动必须确认子进程存活 ---------- */
+check('启动器轮询探活而非盲等', /for \(let i = 0; i < \d+; i\+\+\)/.test(server));
+check('子进程失败时回退前台', /falling back to in-process/.test(server));
+check('启动异常写日志', /logLaunch/.test(server) && /app\.log/.test(server));
+
+/* ---------- 8. 空闲定时器必须延后到 listen ---------- */
+check('idle 定时器不在模块顶层创建', !/^const tickIdle = setInterval/m.test(server),
+  '顶层创建会让复用实例的进程永不退出');
+check('idle 定时器由 startIdleTimer 启动', /function startIdleTimer/.test(server));
+check('startIdleTimer 在 listen 之后才调用',
+  server.indexOf('startIdleTimer();') > server.indexOf('server.listen'),
+  'listen 之前调用会让复用实例的进程永不退出');
+
+/* ---------- 9. 数据字段完整性 ---------- */
+const fields = ['bookId', 'title', 'author', 'words', 'chapters', 'downloaded',
+  'finished', 'autoUpdate', 'lastCheckedAt', 'hasReader', 'lastTitle'];
+for (const f of fields) {
+  check(`scanBooks 返回 ${f}`, new RegExp(`${f}:`).test(core.slice(core.indexOf('export function scanBooks'))));
+}
+
+/* ---------- 10. UI 关键元素 ---------- */
+const uiIds = ['grid', 'count', 'btnAdd', 'btnUpdateAll', 'maskAdd', 'toast', 'dock', 'btnTheme', 'searchInput'];
+for (const id of uiIds) {
+  check(`界面元素 #${id}`, app.includes(`id="${id}"`));
+}
+check('追更开关渲染', /data-toggle/.test(app));
+check('完结且完整时锁死开关', /locked/.test(app));
+check('右键菜单', /ctx/.test(app));
+check('SSE 连接', /new EventSource/.test(app));
+check('快捷键 / 聚焦搜索', /e\.key === '\/'/.test(app));
+check('快捷键 Ctrl+N 加书', /ctrlKey/.test(app));
+
+/* ---------- 11. 阅读器能力 ---------- */
+check('阅读器章节导航（侧栏 nav）', /<nav[^>]*>/.test(reader) && /nav a\.cur/.test(reader));
+check('阅读器进度记忆', /localStorage/.test(reader));
+check('阅读器字号调节', /fontSize|font-size/i.test(reader));
+check('阅读器键盘翻章', /ArrowLeft/.test(reader) && /ArrowRight/.test(reader));
+
+/* ---------- 12. 技术约束 ---------- */
+check('只监听 127.0.0.1', /listen\([^)]*'127\.0\.0\.1'/.test(server));
+check('设备池轮换存在', /class DevicePool|createPool/.test(core));
+check('遇空响应换设备', /isDeviceBlocked/.test(core));
+check('.gitignore 排除书籍数据',
+  ['books/', 'covers/', '.cache/', '书架.html'].every(p => read('.gitignore').includes(p)));
+check('.gitattributes 固定 bat 为 CRLF', /\*\.bat\s+text\s+eol=crlf/.test(read('.gitattributes')));
+check('BASELINE.md 存在', existsSync(join(HERE, 'BASELINE.md')));
+
+/* ---------- 输出 ---------- */
+console.log('\n=== 功能完整性守卫 ===\n');
+for (const [st, name, hint] of results) {
+  if (st === 'ok') console.log('  ✔ ' + name);
+  else console.log('  ✘ ' + name + (hint ? '\n      → ' + hint : ''));
+}
+console.log('');
+console.log(`通过 ${pass}  失败 ${fail}`);
+if (fail > 0) {
+  console.log('\n原有功能被破坏。对照 BASELINE.md 修复后再提交。\n');
+}
+console.log(fail === 0 ? 'BASELINE_INTACT' : 'BASELINE_BROKEN');
+process.exit(fail === 0 ? 0 : 1);
