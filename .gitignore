@@ -1,0 +1,26 @@
+# 依赖
+node_modules/
+
+# 运行时数据（含书籍正文，不要提交）
+.cache/
+books/
+covers/
+*.txt
+
+# 日志
+logs/
+*.log
+
+# 截图（体积大，需要时单独放文档）
+screenshots/
+
+# 系统
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 本地临时
+*.tmp
+dbg*.txt
+# 生成的单文件书架页（含个人书单 + 封面，属于产物不是源码）
+书架.html

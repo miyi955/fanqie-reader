@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root{
+    --bg:#faf8f5; --fg:#2b2724; --sub:#8a827a; --line:#e6e0d8;
+    --card:#ffffff; --accent:#c0392b; --sel:#f3ece4;
+    --font:"Songti SC","STSong","SimSun","Noto Serif CJK SC",serif;
+    --fs:19px; --lh:1.95;
+  }
+  html[data-theme="dark"]{
+    --bg:#1a1a1c; --fg:#c9c6c1; --sub:#7d7973; --line:#302e2c;
+    --card:#212123; --accent:#e07a6a; --sel:#2b2927;
+  }
+  html[data-theme="sepia"]{
+    --bg:#f2e8d5; --fg:#3d3428; --sub:#8d7f68; --line:#ddd0b8;
+    --card:#f7efdf; --accent:#a0522d; --sel:#e8dcc4;
+  }
+  html[data-font="sans"]{ --font:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--fg);font-family:var(--font);
+    transition:background .2s,color .2s;overflow:hidden;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  header{
+    position:fixed;top:0;left:0;right:0;height:52px;z-index:30;
+    display:flex;align-items:center;gap:10px;padding:0 16px;
+    background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+  }
+  .hd-title{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .hd-title small{color:var(--sub);font-weight:400;margin-left:8px;font-size:12px}
+  .tools{display:flex;align-items:center;gap:4px}
+  button{
+    font-family:inherit;font-size:13px;color:var(--fg);background:transparent;
+    border:1px solid var(--line);border-radius:7px;padding:5px 10px;cursor:pointer;
+    transition:background .15s,border-color .15s;white-space:nowrap;
+  }
+  button:hover{background:var(--sel)}
+  button.icon{padding:5px 9px;line-height:1}
+  button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* ---------- 侧栏 ---------- */
+  aside{
+    position:fixed;top:52px;bottom:0;left:0;width:300px;z-index:20;
+    background:var(--card);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;transition:transform .22s ease;
+  }
+  aside.hide{transform:translateX(-100%)}
+  .side-top{padding:12px;border-bottom:1px solid var(--line)}
+  .side-top input{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+    background:var(--bg);color:var(--fg);font-family:inherit;font-size:13px;outline:none;
+  }
+  .side-top input:focus{border-color:var(--accent)}
+  .side-meta{padding:8px 12px;font-size:11.5px;color:var(--sub);display:flex;justify-content:space-between}
+  nav{flex:1;overflow-y:auto;padding:4px 6px 40px}
+  nav a{
+    display:block;padding:7px 10px;font-size:13.5px;color:var(--fg);text-decoration:none;
+    border-radius:6px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  nav a:hover{background:var(--sel)}
+  nav a.cur{background:var(--sel);color:var(--accent);font-weight:600}
+  nav a.read{color:var(--sub)}
+  nav::-webkit-scrollbar,main::-webkit-scrollbar{width:9px}
+  nav::-webkit-scrollbar-thumb,main::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
+
+  /* ---------- 正文 ---------- */
+  main{
+    position:absolute;top:52px;left:300px;right:0;bottom:0;overflow-y:auto;
+    transition:left .22s ease;scroll-behavior:smooth;
+  }
+  main.full{left:0}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 32px 140px}
+  h1.ch{font-size:26px;line-height:1.5;margin-bottom:8px;font-weight:600}
+  .ch-meta{font-size:12.5px;color:var(--sub);margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .body p{font-size:var(--fs);line-height:var(--lh);text-indent:2em;margin-bottom:.85em;text-align:justify}
+  .body p.eq{text-indent:0}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:56px;padding-top:24px;border-top:1px solid var(--line)}
+  .pager button{flex:1;padding:11px;font-size:13.5px}
+  .pager button:disabled{opacity:.35;cursor:default}
+  .end{text-align:center;color:var(--sub);font-size:12px;margin-top:28px}
+
+  /* ---------- 进度 ---------- */
+  .bar{position:fixed;bottom:0;left:0;right:0;height:3px;background:transparent;z-index:40}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s}
+  .hint{
+    position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.78);color:#fff;font-size:12.5px;padding:8px 16px;border-radius:20px;
+    opacity:0;pointer-events:none;transition:opacity .3s;z-index:50;font-family:system-ui,sans-serif;
+  }
+  .hint.show{opacity:1}
+
+  @media (max-width:860px){
+    aside{width:260px;box-shadow:0 0 30px rgba(0,0,0,.15)}
+    main{left:0}
+    .wrap{padding:24px 18px 120px}
+    h1.ch{font-size:21px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="icon" id="btnMenu" title="目录 (T)">☰</button>
+  <div class="hd-title" id="hdTitle">__TITLE__<small id="hdAuthor">__AUTHOR__</small></div>
+  <div class="tools">
+    <button class="icon" id="btnFont" title="字体">Aa</button>
+    <button class="icon" id="btnDec" title="缩小字号">−</button>
+    <button class="icon" id="btnInc" title="放大字号">+</button>
+    <button class="icon" id="btnTheme" title="主题">◐</button>
+  </div>
+</header>
+
+<aside id="side">
+  <div class="side-top">
+    <input id="q" type="text" placeholder="搜索章节标题…（/ 聚焦）">
+  </div>
+  <div class="side-meta">
+    <span id="metaCount"></span>
+    <span id="metaProg"></span>
+  </div>
+  <nav id="nav"></nav>
+</aside>
+
+<main id="main">
+  <div class="wrap">
+    <h1 class="ch" id="chTitle"></h1>
+    <div class="ch-meta" id="chMeta"></div>
+    <div class="body" id="body"></div>
+    <div class="pager">
+      <button id="btnPrev">← 上一章</button>
+      <button id="btnNext">下一章 →</button>
+    </div>
+    <div class="end" id="endNote"></div>
+  </div>
+</main>
+
+<div class="bar"><i id="barFill"></i></div>
+<div class="hint" id="hint"></div>
+
+<script>
+const BOOK = /*__BOOK_DATA__*/null;
+
+const $ = s => document.querySelector(s);
+const nav = $('#nav'), main = $('#main'), body = $('#body');
+const KEY = 'fanqie-reader:' + BOOK.id;
+
+let state = { i:0, fs:19, theme:'light', font:'serif', side:true, scrolls:{} };
+try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch(e){}
+if (state.i >= BOOK.chapters.length) state.i = 0;
+
+/* ---------- 主题 / 字号 ---------- */
+function applyUI(){
+  document.documentElement.dataset.theme = state.theme;
+  document.documentElement.dataset.font = state.font;
+  document.documentElement.style.setProperty('--fs', state.fs + 'px');
+  $('#btnFont').classList.toggle('on', state.font === 'sans');
+  if (state.side) { $('#side').classList.remove('hide'); main.classList.remove('full'); }
+  else { $('#side').classList.add('hide'); main.classList.add('full'); }
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+}
+function toast(msg){
+  const h = $('#hint'); h.textContent = msg; h.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>h.classList.remove('show'), 1400);
+}
+
+/* ---------- 目录 ---------- */
+function buildNav(){
+  const frag = document.createDocumentFragment();
+  BOOK.chapters.forEach((ch, i) => {
+    const a = document.createElement('a');
+    a.href = 'javascript:void 0';
+    a.dataset.i = i;
+    a.textContent = ch.t || ('第 ' + (i+1) + ' 章');
+    a.onclick = e => { e.preventDefault(); go(i); };
+    frag.appendChild(a);
+  });
+  nav.innerHTML = '';
+  nav.appendChild(frag);
+  $('#metaCount').textContent = '共 ' + BOOK.chapters.length + ' 章 · ' + (BOOK.words||0).toLocaleString() + ' 字';
+}
+
+function markNav(){
+  const links = nav.children;
+  for (let k = 0; k < links.length; k++){
+    links[k].classList.toggle('read', k < state.i);
+    links[k].classList.toggle('cur', k === state.i);
+  }
+  const cur = links[state.i];
+  // jsdom 等环境不实现 scrollIntoView，需保护
+  if (cur && state.side && !nav.dataset.filter && typeof cur.scrollIntoView === 'function'){
+    cur.scrollIntoView({ block: 'center' });
+  }
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  const ch = BOOK.chapters[state.i];
+  if (!ch) return;
+  $('#chTitle').textContent = ch.t || ('第 ' + (state.i+1) + ' 章');
+  $('#chMeta').textContent = '第 ' + (state.i+1) + ' / ' + BOOK.chapters.length + ' 章　·　' +
+    (ch.n || 0).toLocaleString() + ' 字';
+  body.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  (ch.c || []).forEach(t => {
+    const p = document.createElement('p');
+    if (/^[“"「『—\-*※]/.test(t) || t.length < 3) p.className = 'eq';
+    p.textContent = t;
+    frag.appendChild(p);
+  });
+  body.appendChild(frag);
+  $('#btnPrev').disabled = state.i === 0;
+  $('#btnNext').disabled = state.i === BOOK.chapters.length - 1;
+  $('#endNote').textContent = state.i === BOOK.chapters.length - 1 ? '— 全书完 —' : '';
+  const pct = ((state.i + 1) / BOOK.chapters.length * 100);
+  $('#barFill').style.width = pct.toFixed(2) + '%';
+  $('#metaProg').textContent = pct.toFixed(1) + '%';
+  markNav();
+  const saved = state.scrolls[state.i];
+  main.scrollTop = saved || 0;
+  document.title = (ch.t ? ch.t + ' - ' : '') + BOOK.title;
+}
+
+function go(i){
+  if (i < 0 || i >= BOOK.chapters.length) return;
+  state.scrolls[state.i] = main.scrollTop;
+  state.i = i;
+  save();
+  render();
+  main.scrollTop = 0;
+}
+
+/* ---------- 事件 ---------- */
+$('#btnPrev').onclick = () => go(state.i - 1);
+$('#btnNext').onclick = () => go(state.i + 1);
+$('#btnMenu').onclick = () => { state.side = !state.side; applyUI(); save(); };
+
+$('#btnInc').onclick = () => { state.fs = Math.min(34, state.fs + 1); applyUI(); save(); toast('字号 ' + state.fs); };
+$('#btnDec').onclick = () => { state.fs = Math.max(13, state.fs - 1); applyUI(); save(); toast('字号 ' + state.fs); };
+$('#btnFont').onclick = () => { state.font = state.font === 'serif' ? 'sans' : 'serif'; applyUI(); save(); };
+$('#btnTheme').onclick = () => {
+  const order = ['light','sepia','dark'];
+  state.theme = order[(order.indexOf(state.theme) + 1) % 3];
+  applyUI(); save();
+  toast({light:'日间', sepia:'羊皮纸', dark:'夜间'}[state.theme]);
+};
+
+$('#q').oninput = e => {
+  const kw = e.target.value.trim().toLowerCase();
+  const links = nav.children;
+  nav.dataset.filter = kw ? '1' : '';
+  let hit = 0;
+  for (let k = 0; k < links.length; k++){
+    const ok = !kw || links[k].textContent.toLowerCase().includes(kw);
+    links[k].style.display = ok ? '' : 'none';
+    if (ok) hit++;
+  }
+  $('#metaProg').textContent = kw ? hit + ' 条' : (((state.i+1)/BOOK.chapters.length*100).toFixed(1) + '%');
+};
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
+  switch(e.key){
+    case 'ArrowLeft': go(state.i - 1); break;
+    case 'ArrowRight': case ' ': if (e.key===' ') e.preventDefault(); go(state.i + 1); break;
+    case 'j': go(state.i + 1); break;
+    case 'k': go(state.i - 1); break;
+    case 't': case 'T': state.side = !state.side; applyUI(); save(); break;
+    case '/': e.preventDefault(); $('#q').focus(); break;
+  }
+});
+
+main.addEventListener('scroll', () => {
+  state.scrolls[state.i] = main.scrollTop;
+  clearTimeout(main._t);
+  main._t = setTimeout(save, 400);
+});
+
+/* ---------- 启动 ---------- */
+applyUI();
+buildNav();
+render();
+toast('← → 翻章　T 目录　/ 搜索章节');
+</script>
+</body>
+</html>

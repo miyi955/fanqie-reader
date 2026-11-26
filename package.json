@@ -1,0 +1,21 @@
+{
+  "name": "fanqie-reader",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "番茄小说 个人书架与离线阅读器",
+  "scripts": {
+    "shelf": "node fanqie.mjs shelf",
+    "list": "node fanqie.mjs list",
+    "update": "node fanqie.mjs update",
+    "test": "node shelf-smoke.mjs"
+  },
+  "dependencies": {
+    "libheif-js": "^1.19.8",
+    "openfanqie": "^0.1.0",
+    "sharp": "^0.34.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
