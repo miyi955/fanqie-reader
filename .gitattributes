@@ -1,0 +1,20 @@
+# 统一换行，避免不同系统 checkout 后文件损坏
+
+# 批处理必须是 CRLF，否则 Windows 双击直接报错
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 源码统一 LF
+*.mjs text eol=lf
+*.js  text eol=lf
+*.json text eol=lf
+*.md  text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# 二进制，别做换行转换
+*.ico binary
+*.png binary
+*.jpg binary
+*.heic binary
