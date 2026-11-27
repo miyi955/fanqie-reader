@@ -5,10 +5,13 @@ import { join } from 'node:path';
 import { HERE, NODE, cleanEnv } from './test-env.mjs';
 
 const M = NODE;
-const PORT = 47888;
+// 默认 47888 保持输出稳定；并发跑时（CI / 误开两个终端）可用环境变量换端口
+const PORT = Number(process.env.FANQIE_TEST_PORT) || 47888;
 const BASE = `http://127.0.0.1:${PORT}`;
 
 const env = cleanEnv();
+// 实例记录也按端口隔离，避免两个自检抢同一个 .cache/instance.json
+env.FANQIE_INSTANCE = `.cache/instance-${PORT}.json`;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

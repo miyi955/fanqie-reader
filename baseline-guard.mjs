@@ -167,6 +167,23 @@ check('测试依赖已声明', /"jsdom"/.test(read('package.json')),
   '缺 jsdom 时 jsdom 类测试无法运行');
 check('run-all 缺数据时自动造数', /seed-fixture/.test(read('run-all.mjs')));
 
+/* ---------- 14. 数据安全（血泪教训） ---------- */
+// 教训：清理测试数据时用 `find .cache -name "*.json" -delete`，把真实书籍缓存全删了。
+// 这里守住「清理逻辑不得使用模糊匹配」这条底线。
+const fixture = read('seed-fixture.mjs');
+check('清理测试数据只用精确 id，不用通配符',
+  /TEST_ID/.test(fixture) && !/readdirSync\([^)]*\)\.forEach\([^)]*rm/.test(fixture),
+  '模糊匹配会连真实书籍一起删');
+check('清理前打印真实书籍清单（可人工核对）',
+  /真实书籍/.test(fixture) && /未触碰/.test(fixture),
+  '没有这行输出，误删时用户无从察觉');
+check('测试假书 id 与真实 id 有明确区分段',
+  /900000000000000000/.test(fixture),
+  '假数据和真数据必须一眼可分');
+check('trash-test 假书 id 按进程隔离（并发安全）',
+  /process\.pid/.test(read('trash-test.mjs')),
+  '并发跑自检时两个进程会互相删掉对方的假书');
+
 /* ---------- 输出 ---------- */
 console.log('\n=== 功能完整性守卫 ===\n');
 for (const [st, name, hint] of results) {

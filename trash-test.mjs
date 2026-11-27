@@ -13,7 +13,8 @@ const ok = (c, n, extra = '') => {
 console.log('\n=== 移出书架安全性 ===\n');
 
 // 造一本假书，只测删除行为，不碰真实数据
-const FAKE = '9999999999999999999';
+// id 带 pid 后缀：两套自检并发跑时各用各的，不会互相删掉对方的假书
+const FAKE = '99999999999999' + String(process.pid).slice(-5);
 mkdirSync(CACHE, { recursive: true });
 writeFileSync(bookCachePath(FAKE), JSON.stringify({
   bookId: FAKE, title: '测试用假书', author: 'test',

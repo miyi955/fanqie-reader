@@ -28,19 +28,39 @@ const clean = process.argv.includes('--clean');
 const TEST_ID = /^900000000000000000\d$/;
 
 /* ================= 清理 ================= */
+// 铁律：只认 TEST_ID 这个精确前缀，绝不用通配符。
+// （教训：曾用 find .cache -name "*.json" -delete 清理，把真实书籍缓存一起删了。
+//   清理函数里出现任何模糊匹配，就是下一次事故。）
 if (clean) {
   const { rmSync } = await import('node:fs');
+
+  // 先算出哪些是真书，清理前打印出来，让人看得见"没被碰"
+  const realBooks = existsSync(CACHE)
+    ? readdirSync(CACHE).filter(f => /^\d{10,}\.json$/.test(f) && !TEST_ID.test(f.replace('.json', '')))
+    : [];
+
   let removed = 0;
+  const targets = [];
   for (const dir of [CACHE, COVERS, join(HERE, 'books')]) {
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir)) {
-      const m = /^(900000000000000000\d)\.(json|jpg|html)$/.exec(f);
-      if (m && TEST_ID.test(m[1])) { rmSync(join(dir, f), { force: true }); removed++; }
+      // 提取文件名主体，必须完整匹配 TEST_ID 才允许删
+      const m = /^(.+)\.(json|jpg|html)$/.exec(f);
+      if (!m || !TEST_ID.test(m[1])) continue;
+      targets.push(join(dir, f));
     }
   }
-  // 书架页需要重新生成，否则还挂着已删的书
+
+  for (const t of targets) {
+    try { rmSync(t, { force: true }); removed++; } catch {}
+  }
+
   spawnSync(process.execPath, [join(HERE, 'fanqie.mjs'), 'shelf'], { cwd: HERE, encoding: 'utf8' });
-  console.log(`已清理 ${removed} 个测试文件（真实书籍未动）`);
+
+  if (realBooks.length) {
+    console.log(`真实书籍 ${realBooks.length} 本，未触碰：${realBooks.map(f => f.replace('.json', '')).join(', ')}`);
+  }
+  console.log(`已清理 ${removed} 个测试文件（仅匹配 ${TEST_ID}）`);
   process.exit(0);
 }
 

@@ -40,7 +40,9 @@ const DETACHED = argv.includes('--detached');
 // 空闲多久后自动退出（毫秒）。有任务在跑或仍有连接时不计时。
 const IDLE_MS = Number(opt('idle', 15 * 60 * 1000));
 
-const INSTANCE = join(CACHE, 'instance.json');
+// 实例记录文件名可按环境变量覆盖：并发跑两套自检时各用各的，避免互相覆盖。
+// 正常运行（双击图标）不设该变量，仍是 instance.json。
+const INSTANCE = join(CACHE, process.env.FANQIE_INSTANCE || 'instance.json');
 const LAUNCH_LOG = join(HERE, 'logs', 'app.log');
 
 // 用来区分"这是我们的服务"和"端口上恰好有个别的 HTTP 服务"。

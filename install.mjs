@@ -13,7 +13,7 @@
  * 幂等：重复执行不会坏，已装好的步骤会跳过。
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { connect } from 'node:net';
 
@@ -24,6 +24,40 @@ const CHECK_ONLY = args.includes('--check');
 const KEEP_FIXTURE = args.includes('--keep-fixture');
 
 const WINDOWS = process.platform === 'win32';
+
+/* ================= 重入锁 =================
+ * 两套自检并发跑会互相踩：一个在造数据/清数据，另一个正在读，结果随机失败。
+ * 用文件锁挡住，并检测陈旧锁（进程已死）避免卡死。
+ */
+const LOCK = join(HERE, '.cache', '.install.lock');
+
+function pidAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+
+function acquireLock() {
+  try {
+    if (existsSync(LOCK)) {
+      const old = Number((readFileSync(LOCK, 'utf8') || '0').trim());
+      if (old && old !== process.pid && pidAlive(old)) {
+        fail(`另一个安装进程正在运行（pid ${old}）`);
+        log('  等它跑完再重试。如果确定它已经不在了，删掉 .cache/.install.lock');
+        return false;
+      }
+      // 陈旧锁：持有者已退出，直接接管
+    }
+    writeFileSync(LOCK, String(process.pid));
+    return true;
+  } catch {
+    return true;   // 锁机制本身出错不该阻塞安装
+  }
+}
+
+function releaseLock() {
+  try {
+    if (existsSync(LOCK) && readFileSync(LOCK, 'utf8').trim() === String(process.pid)) unlinkSync(LOCK);
+  } catch {}
+}
 
 /* ================= 输出 ================= */
 const C = { r: '\x1b[0m', g: '\x1b[32m', y: '\x1b[33m', d: '\x1b[2m', b: '\x1b[1m' };
@@ -220,7 +254,13 @@ function makeShortcut() {
   log(`${C.b}番茄小说书架 · ${CHECK_ONLY ? '环境自检' : '一键安装'}${C.r}`);
   log(C.d + HERE + C.r);
 
+  // 退出时一定要放锁，包括异常和 Ctrl+C
+  for (const sig of ['exit', 'SIGINT', 'SIGTERM']) process.on(sig, releaseLock);
+
   if (!checkNode()) process.exit(1);
+
+  if (!acquireLock()) process.exit(1);
+
   checkBrowser();
 
   if (!CHECK_ONLY) {
