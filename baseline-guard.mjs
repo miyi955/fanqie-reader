@@ -184,6 +184,12 @@ check('trash-test 假书 id 按进程隔离（并发安全）',
   /process\.pid/.test(read('trash-test.mjs')),
   '并发跑自检时两个进程会互相删掉对方的假书');
 
+// 文档层同样要守住：执行者（人或 AI）读到的指引里不能出现「手动清理」
+const setup = read('SETUP.md');
+check('SETUP.md 明令禁止手动删数据目录',
+  /不要手动删/.test(setup) && /seed-fixture\.mjs --clean/.test(setup),
+  '执行者不知道这条，就会复现那次事故');
+
 /* ---------- 输出 ---------- */
 console.log('\n=== 功能完整性守卫 ===\n');
 for (const [st, name, hint] of results) {

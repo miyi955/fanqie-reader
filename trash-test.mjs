@@ -1,6 +1,6 @@
 // 验证「移出书架」不再直接删除文件，而是移到 .trash
 import { removeBook, scanBooks } from './core.mjs';
-import { existsSync, readdirSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, mkdirSync, writeFileSync, readFileSync, rmSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CACHE, readerPath, bookCachePath } from './core.mjs';
 
@@ -54,8 +54,14 @@ const inShelf = scanBooks().some(b => b.bookId === FAKE);
 ok(!inShelf, '移出后不在书架列表');
 
 // 清理测试产物
-const fs = await import('node:fs/promises');
-if (r.bin) await fs.rm(r.bin, { recursive: true, force: true });
+// 注意：不要用 fs.rm(dir,{recursive:true})。沙箱的 safe-delete shim 会把递归删除转成回收站操作，
+// 在某些执行环境下会直接抛错。这里只删自己刚造的那两个文件，再尝试摘掉空目录。
+if (r.bin) {
+  for (const f of [FAKE + '.json', FAKE + '.html']) {
+    try { rmSync(join(r.bin, f), { force: true }); } catch {}
+  }
+  try { rmdirSync(r.bin); } catch {}   // 目录非空就留着，不影响结果
+}
 
 console.log(`\n通过 ${pass}  失败 ${fail}`);
 console.log(fail === 0 ? 'ALL_PASS' : 'HAS_FAIL');

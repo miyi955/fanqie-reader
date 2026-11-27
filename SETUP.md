@@ -146,6 +146,19 @@ node fanqie.mjs add https://fanqienovel.com/page/7686168223049337880
 **5. 不要承诺 macOS / Linux 能用桌面图标。**
 `install.mjs` 在非 Windows 上会跳过图标步骤，只保留命令行和服务。这是设计如此，不是 bug。
 
+**6. 不要手动删 `.cache` / `books` / `covers` 里的文件。**
+不管是用 `rm`、`find ... -delete` 还是别的方式。这三个目录里放的是用户的全部书籍数据，`*.json` 通配一下就全没了，而且回收站里寻不回。
+
+要清测试数据只跑这一条：
+
+```bash
+node seed-fixture.mjs --clean
+```
+
+它只删 id 以 `900000000000000000` 开头的假书，删之前会把真实书籍清单打印出来给你核对。
+
+（这条是真实事故：开发时用过一次 `find .cache -name "*.json" -delete`，5 本书 50MB 缓存、全部阅读器和封面一次性清空，只能重新下载。）
+
 ---
 
 ## 装好之后用户会问的事
