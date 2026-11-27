@@ -194,7 +194,7 @@ fanqie-reader/
 | `node server-smoke.mjs <baseUrl>` | 服务端 25 条断言：路由、封面、阅读器、开关落盘、SSE |
 | `node shelf-smoke.mjs` | 单文件书架页 22 条 jsdom 断言 |
 | `node reader-test.mjs` | 阅读器 43 条：返回书架 / 行间距 / 目录倒序 |
-| `node logic-test.mjs` | 追更规则 11 条（完结跳过 / 缺章补齐 / 开关生效） |
+| `node logic-test.mjs` | 追更规则：6 条固定用例 + 按书架实际书目逐本验证（完结跳过 / 缺章补齐 / 开关生效） |
 | `node trash-test.mjs` | 移出书架进回收目录，9 条 |
 | `node single-instance-test.mjs` | 重复启动复用实例 |
 | `node coldstart-test.mjs` | 冷启动 11 条：陈旧记录不误连、旧格式记录被忽略、第二实例自动退出、自脱离真的起来 |

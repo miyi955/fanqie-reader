@@ -182,7 +182,7 @@
 |---|---|---|
 | `run-all.mjs` | 一键全跑 | 全绿 |
 | `server-smoke.mjs` | 服务端 25 条 | 25/25 |
-| `logic-test.mjs` | 追更规则 11 条 | 11/11 |
+| `logic-test.mjs` | 追更规则 6 条固定用例 + 按实际书目逐本验证 | 全绿 |
 | `trash-test.mjs` | 删除保护 9 条 | 9/9 |
 | `shelf-smoke.mjs` | 书架页 22 条 | 22/22 |
 | `reader-test.mjs` | 阅读器功能 43 条 | 43/43 |
