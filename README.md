@@ -2,8 +2,10 @@
 
 在电脑上完整阅读番茄小说（含锁章/VIP 章）。桌面应用形态，多本书统一管理，可按书控制是否抓取最新章节。
 
-> **维护规则**：当前版本（`v2.0.0`）为功能基线。后续迭代必须保证已有功能完整，改完跑 `node run-all.mjs` 必须全绿。
+> **维护规则**：当前版本（`v2.1.0`）为功能基线。后续迭代必须保证已有功能完整，改完跑 `npm test` 必须全绿。
 > 基线清单见 [BASELINE.md](BASELINE.md)，逐条列出全部现有能力，是验收标准也是防止误删功能的检查依据。
+>
+> **给别人装**：把本目录连同 [SETUP.md](SETUP.md) 一起交出去，对方让 AI 助手读那份文档就能一步步装好。
 
 ## 快速开始
 
@@ -188,14 +190,18 @@ fanqie-reader/
 
 | 脚本 | 覆盖 |
 |---|---|
-| `node run-all.mjs` | 一键跑下面全部套件（自己起服务、跑完收掉） |
+| `npm test` / `node run-all.mjs` | 一键跑下面全部套件（自己造数据、起服务、跑完收掉） |
 | `node server-smoke.mjs <baseUrl>` | 服务端 25 条断言：路由、封面、阅读器、开关落盘、SSE |
 | `node shelf-smoke.mjs` | 单文件书架页 22 条 jsdom 断言 |
-| `node logic-test.mjs` | 追更规则 10 条（完结跳过 / 缺章补齐 / 开关生效） |
+| `node reader-test.mjs` | 阅读器 43 条：返回书架 / 行间距 / 目录倒序 |
+| `node logic-test.mjs` | 追更规则 11 条（完结跳过 / 缺章补齐 / 开关生效） |
 | `node trash-test.mjs` | 移出书架进回收目录，9 条 |
 | `node single-instance-test.mjs` | 重复启动复用实例 |
 | `node coldstart-test.mjs` | 冷启动 11 条：陈旧记录不误连、旧格式记录被忽略、第二实例自动退出、自脱离真的起来 |
-| `node baseline-guard.mjs` | 功能完整性 92 条：路由、命令、导出、关键语义、数据字段、UI 元素 |
+| `node baseline-guard.mjs` | 功能完整性 108 条：路由、命令、导出、关键语义、数据字段、UI 元素 |
+| `node seed-fixture.mjs` | 造离线测试数据（无书时 `run-all` 会自动调它） |
+
+`node_modules` 里的 `jsdom` 是测试依赖，`playwright-core` 只有截图脚本用。`run-all.mjs` 在 `.cache` 为空时会自动调用 `seed-fixture.mjs` 造 3 本假书（id 固定 `900000000000000000x`），所以新克隆的仓库直接 `npm test` 就能跑。真书进来后不会被覆盖。清掉假数据：`node seed-fixture.mjs --clean`。
 
 ### 迭代时怎么保证没删功能
 
@@ -233,10 +239,10 @@ fanqie-reader/
 
 ```bash
 npm install          # 装依赖（sharp 有原生模块）
-node run-all.mjs     # 跑全部测试；需要本机有 Edge
+npm test             # 跑全部测试；需要本机有 Edge
 node fanqie.mjs app  # 前台起服务，方便看日志
 ```
 
-仓库只含源码。`books/`、`covers/`、`.cache/`、`screenshots/`、`书架.html` 都在 `.gitignore` 里——这些是运行时产物，里面是书籍正文和个人书单，不该进版本库。
+仓库只含源码。`books/`、`covers/`、`.cache/`、`screenshots/`、`书架.html` 都在 `.gitignore` 里——这些是运行时产物，里面是书籍正文和个人书单，不该进版本库。所以新克隆下来这些目录是空的，`npm test` 会自动造一批测试数据填进去，不影响之后加真书。
 
 `开始.bat` / `追更.bat` 通过 `.gitattributes` 固定为 CRLF。Windows 的 cmd 遇到 LF 换行的批处理会直接报错，这条不能省。

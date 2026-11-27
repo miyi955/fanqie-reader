@@ -1,20 +1,19 @@
 // 阅读器新功能截图（Playwright + 本机 Edge）
 // 自己起服务、跑完收掉：沙箱会在工具会话结束时回收子进程，提前起好的服务活不到这里。
-import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
-const req = createRequire('C:/Users/yangl/.workbuddy/binaries/node/workspace/');
-const { chromium } = req('playwright-core');
+import { join } from 'node:path';
+import { HERE, requireFrom, findBrowser, cleanEnv } from './test-env.mjs';
+const { chromium } = requireFrom('playwright-core');
 
 const PORT = 48112;
 const BASE = `http://127.0.0.1:${PORT}`;
 const ID = process.env.BOOK || '7143038691944959011';
-const OUT = 'screenshots';
+const OUT = join(HERE, 'screenshots');
 
-const env = { ...process.env };
-for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) delete env[k];
+const env = cleanEnv();
 
 const srv = spawn(process.execPath, ['server.mjs', '--foreground', '--no-open', '--port', String(PORT)], {
-  cwd: process.cwd(), env, stdio: 'ignore', windowsHide: true,
+  cwd: HERE, env, stdio: 'ignore', windowsHide: true,
 });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -28,7 +27,8 @@ for (let i = 0; i < 30; i++) {
 }
 if (!ready) { console.log('SERVER_FAILED'); srv.kill(); process.exit(1); }
 
-const exe = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const exe = findBrowser();
+if (!exe) { console.log('NO_BROWSER: 没找到 Edge/Chrome，设置 EDGE_PATH 指向浏览器可执行文件'); srv.kill(); process.exit(1); }
 const browser = await chromium.launch({ executablePath: exe, headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 

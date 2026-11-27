@@ -1,10 +1,9 @@
 // 阅读器功能测试：返回书架 / 行间距 / 目录倒序
 // 用真实生成的 books/*.html（不是模板），确保烤进去的文件本身是对的。
-import { createRequire } from 'node:module';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { requireFrom } from './test-env.mjs';
 
-const req = createRequire('C:/Users/yangl/.workbuddy/binaries/node/workspace/');
-const { JSDOM, VirtualConsole } = req('jsdom');
+const { JSDOM, VirtualConsole } = requireFrom('jsdom');
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => {

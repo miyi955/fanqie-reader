@@ -2,15 +2,15 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { HERE, cleanEnv } from './test-env.mjs';
 
-const HERE = 'D:/WorkBuddy/Lan-日常/outputs/fanqie-reader';
 const INST = join(HERE, '.cache', 'instance.json');
 
 function runServer() {
   return new Promise((resolve) => {
     const p = spawn(process.execPath, [join(HERE, 'server.mjs'), '--no-open'], {
       cwd: HERE, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, HTTP_PROXY: '', HTTPS_PROXY: '', http_proxy: '', https_proxy: '' },
+      env: cleanEnv(),
     });
     let out = '';
     p.stdout.on('data', d => { out += d; });

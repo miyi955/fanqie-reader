@@ -1,14 +1,12 @@
 // 冷启动/单实例场景验证。不依赖 shell 的 & 后台语义，用 spawn 自己管进程。
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { HERE, NODE, ALT_NODE, cleanEnv } from './test-env.mjs';
 
-const M = 'C:/Users/yangl/.workbuddy/binaries/node/versions/22.22.2-2/node.exe';
-const NVM = 'C:/Users/yangl/AppData/Local/Author Software/nvm/.nodejs/node.exe';
-const HERE = 'D:/WorkBuddy/Lan-日常/outputs/fanqie-reader';
+const M = NODE;
 const INSTANCE = HERE + '/.cache/instance.json';
 
-const env = { ...process.env };
-for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) delete env[k];
+const env = cleanEnv();
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
@@ -59,9 +57,9 @@ console.log('=== 场景 3：真实双实例（第二个应复用而非重复起�
   const ia = readInst();
   ok('第一个实例已就绪', ia && ia.port === 47668);
 
-  // 第二个用 nvm node（模拟真实双击），不带 --port，应复用 47668 并立即退出
+  // 第二个用系统 node（模拟真实双击），不带 --port，应复用 47668 并立即退出
   const b = await new Promise(res => {
-    const c = spawn(NVM, ['server.mjs', '--foreground', '--no-open'], { cwd: HERE, env, stdio: 'ignore', windowsHide: true });
+    const c = spawn(ALT_NODE, ['server.mjs', '--foreground', '--no-open'], { cwd: HERE, env, stdio: 'ignore', windowsHide: true });
     const t = setTimeout(() => { c.kill(); res('TIMEOUT'); }, 9000);
     c.on('exit', code => { clearTimeout(t); res(code); });
   });
@@ -74,11 +72,11 @@ console.log('=== 场景 3：真实双实例（第二个应复用而非重复起�
   await sleep(500);
 }
 
-console.log('=== 场景 4：自脱离启动（真实双击路径，用 nvm node）===');
+console.log('=== 场景 4：自脱离启动（真实双击路径，用系统 node）===');
 {
   try { rmSync(INSTANCE); } catch {}
   // 与快捷方式完全一致：不带 --foreground / --no-open / --port
-  const parent = spawn(NVM, ['server.mjs', '--no-open'], { cwd: HERE, env, stdio: 'ignore', windowsHide: true });
+  const parent = spawn(ALT_NODE, ['server.mjs', '--no-open'], { cwd: HERE, env, stdio: 'ignore', windowsHide: true });
   const code = await new Promise(res => parent.on('exit', res));
   ok('父进程快速退出（不占控制台）', true);
   await sleep(1500);

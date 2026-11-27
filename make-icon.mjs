@@ -1,9 +1,10 @@
 // 生成应用图标（ICO，内嵌 PNG）
 import sharp from 'sharp';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const OUT = 'D:/WorkBuddy/Lan-日常/outputs/fanqie-reader';
+const OUT = dirname(fileURLToPath(import.meta.url));
 
 // 番茄红底 + 白色书页/文字线条，简洁、缩小后仍可辨识
 function svg(size) {

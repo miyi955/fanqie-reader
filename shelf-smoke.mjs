@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module';
 import { readFileSync, readdirSync } from 'node:fs';
+import { requireFrom } from './test-env.mjs';
 
-const req = createRequire('C:/Users/yangl/.workbuddy/binaries/node/workspace/');
-const { JSDOM, VirtualConsole } = req('jsdom');
+const { JSDOM, VirtualConsole } = requireFrom('jsdom');
 
 // 从缓存得出期望书目，避免测试写死数量
 const caches = readdirSync('.cache').filter(f => /^\d{10,}\.json$/.test(f))

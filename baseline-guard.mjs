@@ -142,6 +142,20 @@ check('.gitignore 排除书籍数据',
 check('.gitattributes 固定 bat 为 CRLF', /\*\.bat\s+text\s+eol=crlf/.test(read('.gitattributes')));
 check('BASELINE.md 存在', existsSync(join(HERE, 'BASELINE.md')));
 
+/* ---------- 13. 可分发性（交给别人能装起来） ---------- */
+// 这些不是业务能力，但坏了一样等于别人装不上，所以一并守住。
+check('安装流程文档存在', existsSync(join(HERE, 'SETUP.md')),
+  '新用户/新机器没有它就无从下手');
+check('离线测试数据生成器存在', existsSync(join(HERE, 'seed-fixture.mjs')),
+  '新克隆的仓库 .cache 为空，没有造数脚本测试跑不起来');
+check('测试脚本不写死本机路径',
+  !/C:\/Users\/[a-z]/i.test(read('test-env.mjs')) && /export const HERE/.test(read('test-env.mjs')),
+  '写死用户名/盘符换台机器就崩');
+check('测试环境解析集中在一处', /export function cleanEnv/.test(read('test-env.mjs')) && /export function findBrowser/.test(read('test-env.mjs')));
+check('测试依赖已声明', /"jsdom"/.test(read('package.json')),
+  '缺 jsdom 时 jsdom 类测试无法运行');
+check('run-all 缺数据时自动造数', /seed-fixture/.test(read('run-all.mjs')));
+
 /* ---------- 输出 ---------- */
 console.log('\n=== 功能完整性守卫 ===\n');
 for (const [st, name, hint] of results) {

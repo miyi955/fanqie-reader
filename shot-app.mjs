@@ -1,14 +1,14 @@
 // 用本机 Edge 截图桌面版界面（本机没有 Playwright 自带 Chromium）
-import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { HERE, requireFrom, findBrowser } from './test-env.mjs';
 
-const req = createRequire('C:/Users/yangl/.workbuddy/binaries/node/workspace/');
-const { chromium } = req('playwright-core');
+const { chromium } = requireFrom('playwright-core');
 
 const BASE = process.argv[2] || 'http://127.0.0.1:45999';
-const OUT = 'D:/WorkBuddy/Lan-日常/outputs/fanqie-reader/screenshots';
+const OUT = join(HERE, 'screenshots');
 
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const EDGE = findBrowser();
+if (!EDGE) { console.log('NO_BROWSER: 没找到 Edge/Chrome，设置 EDGE_PATH 环境变量指向浏览器可执行文件'); process.exit(1); }
 
 const browser = await chromium.launch({ headless: true, executablePath: EDGE });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 2 });

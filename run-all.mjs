@@ -1,13 +1,14 @@
 // 一次性跑完所有回归：自己起服务（spawn 管理），跑完收掉。
 import { spawn } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { HERE, NODE, cleanEnv } from './test-env.mjs';
 
-const M = 'C:/Users/yangl/.workbuddy/binaries/node/versions/22.22.2-2/node.exe';
-const HERE = 'D:/WorkBuddy/Lan-日常/outputs/fanqie-reader';
+const M = NODE;
 const PORT = 47888;
 const BASE = `http://127.0.0.1:${PORT}`;
 
-const env = { ...process.env };
-for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) delete env[k];
+const env = cleanEnv();
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -26,6 +27,24 @@ function runTest(file, args = []) {
     c.stderr.on('data', d => out += d);
     c.on('exit', code => res({ code, out }));
   });
+}
+
+// 新克隆的仓库里 .cache / books / covers 是空的（运行时产物不进版本库）。
+// 没有书时整套行为测试无从跑起，先造离线测试数据。
+function hasBooks() {
+  const dir = join(HERE, '.cache');
+  if (!existsSync(dir)) return false;
+  return readdirSync(dir).some(f => /^\d{10,}\.json$/.test(f));
+}
+
+if (!hasBooks()) {
+  console.log('没有书籍数据，生成离线测试数据…');
+  const seed = await runTest('seed-fixture.mjs');
+  if (!seed.out.includes('SEED_OK')) {
+    console.log('SEED_FAILED\n' + seed.out);
+    process.exit(1);
+  }
+  console.log('');
 }
 
 const srv = spawn(M, ['server.mjs', '--foreground', '--no-open', '--port', String(PORT)], {
