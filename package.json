@@ -1,6 +1,6 @@
 {
   "name": "fanqie-reader",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "type": "module",
   "description": "番茄小说 个人书架与离线阅读器",
@@ -9,7 +9,9 @@
     "shelf": "node fanqie.mjs shelf",
     "list": "node fanqie.mjs list",
     "update": "node fanqie.mjs update",
-    "test": "node run-all.mjs"
+    "test": "node run-all.mjs",
+    "install": "node install.mjs",
+    "check": "node install.mjs --check"
   },
   "dependencies": {
     "libheif-js": "^1.19.8",

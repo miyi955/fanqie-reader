@@ -2,14 +2,22 @@
 
 在电脑上完整阅读番茄小说（含锁章/VIP 章）。桌面应用形态，多本书统一管理，可按书控制是否抓取最新章节。
 
-> **维护规则**：当前版本（`v2.1.0`）为功能基线。后续迭代必须保证已有功能完整，改完跑 `npm test` 必须全绿。
+> **维护规则**：当前版本（`v2.1.2`）为功能基线。后续迭代必须保证已有功能完整，改完跑 `npm test` 必须全绿。
 > 基线清单见 [BASELINE.md](BASELINE.md)，逐条列出全部现有能力，是验收标准也是防止误删功能的检查依据。
 >
-> **给别人装**：把本目录连同 [SETUP.md](SETUP.md) 一起交出去，对方让 AI 助手读那份文档就能一步步装好。
+> **给别人装**：让对方跑 `node install.mjs`，一条命令完成装依赖 + 自检 + 建图标。细节见 [SETUP.md](SETUP.md)（给 AI 执行的指令），怎么跟对方沟通见 [SHARE.md](SHARE.md)。
 
 ## 快速开始
 
-**双击桌面上的「番茄小说」图标**（或 `开始.bat`）。
+**一条命令装好：**
+
+```bash
+git clone https://github.com/miyi955/fanqie-reader.git
+cd fanqie-reader
+node install.mjs
+```
+
+看到 `INSTALL_OK` 即可用。之后**双击桌面上的「番茄小说」图标**（或 `开始.bat`）。
 
 会直接打开一个应用窗口——没有地址栏、没有标签页，就是一个书架应用。背后是一个只监听 `127.0.0.1` 的本地服务，浏览器用 Edge/Chrome 的 `--app` 模式呈现。
 
@@ -198,7 +206,7 @@ fanqie-reader/
 | `node trash-test.mjs` | 移出书架进回收目录，9 条 |
 | `node single-instance-test.mjs` | 重复启动复用实例 |
 | `node coldstart-test.mjs` | 冷启动 11 条：陈旧记录不误连、旧格式记录被忽略、第二实例自动退出、自脱离真的起来 |
-| `node baseline-guard.mjs` | 功能完整性 108 条：路由、命令、导出、关键语义、数据字段、UI 元素 |
+| `node baseline-guard.mjs` | 功能完整性 113 条：路由、命令、导出、关键语义、数据字段、UI 元素 |
 | `node seed-fixture.mjs` | 造离线测试数据（无书时 `run-all` 会自动调它） |
 
 `node_modules` 里的 `jsdom` 是测试依赖，`playwright-core` 只有截图脚本用。`run-all.mjs` 在 `.cache` 为空时会自动调用 `seed-fixture.mjs` 造 3 本假书（id 固定 `900000000000000000x`），所以新克隆的仓库直接 `npm test` 就能跑。真书进来后不会被覆盖。清掉假数据：`node seed-fixture.mjs --clean`。

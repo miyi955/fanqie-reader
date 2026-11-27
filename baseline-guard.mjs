@@ -144,8 +144,19 @@ check('BASELINE.md 存在', existsSync(join(HERE, 'BASELINE.md')));
 
 /* ---------- 13. 可分发性（交给别人能装起来） ---------- */
 // 这些不是业务能力，但坏了一样等于别人装不上，所以一并守住。
-check('安装流程文档存在', existsSync(join(HERE, 'SETUP.md')),
+check('一键安装脚本存在', existsSync(join(HERE, 'install.mjs')),
+  '没有它就得让人/模型自己拼 9 个步骤，容易出错');
+check('安装脚本能自检且在成功时输出 INSTALL_OK',
+  /ALL_SUITES_PASS/.test(read('install.mjs')) && /INSTALL_OK/.test(read('install.mjs')),
+  'AI 需要一个明确字符串判断成功，不能靠猜');
+check('安装脚本依赖安装有降级路径',
+  /registry\.npmmirror\.com/.test(read('install.mjs')) && /--proxy/.test(read('install.mjs')),
+  '国内直连 npm 常超时，没有降级会直接卡死');
+check('安装脚本在非 Windows 上跳过图标而非报错', /process\.platform/.test(read('install.mjs')));
+check('安装流程文档存在（给 AI 执行）', existsSync(join(HERE, 'SETUP.md')),
   '新用户/新机器没有它就无从下手');
+check('分享引导文档存在（给用户沟通用）', existsSync(join(HERE, 'SHARE.md')),
+  '光有技术文档，用户不知道怎么跟朋友开口');
 check('离线测试数据生成器存在', existsSync(join(HERE, 'seed-fixture.mjs')),
   '新克隆的仓库 .cache 为空，没有造数脚本测试跑不起来');
 check('测试脚本不写死本机路径',
